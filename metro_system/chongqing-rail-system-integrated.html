@@ -1,0 +1,1507 @@
+<!doctype html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>重庆轨道交通系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+        body {
+            font-family: Inter, -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: #e2e8f0;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #app {
+            position: relative;
+            width: 96vw;
+            height: 94vh;
+            background: #f8fafc;
+            border-radius: 32px;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.12);
+            overflow: hidden;
+        }
+        .map-area {
+            position: absolute;
+            inset: 0;
+            background: #ecf3f9;
+            z-index: 1;
+        }
+        .map-header {
+            position: absolute;
+            top: 24px;
+            left: 24px;
+            z-index: 20;
+            pointer-events: none;
+            background: rgba(255, 255, 255, 0.78);
+            backdrop-filter: blur(12px);
+            padding: 8px 20px;
+            border-radius: 60px;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+        .map-header h2 { font-size: 20px; font-weight: 600; color: #0f172a; }
+        .map-header p { font-size: 11px; color: #475569; }
+        .sidebar {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            bottom: 20px;
+            width: 420px;
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(28px);
+            border-radius: 32px;
+            z-index: 100;
+            border: 1px solid rgba(255, 255, 255, 0.55);
+            box-shadow: -8px 0 30px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            padding: 20px 22px;
+            overflow-y: auto;
+        }
+        .sidebar::-webkit-scrollbar { width: 4px; }
+        .sidebar::-webkit-scrollbar-track { background: transparent; }
+        .sidebar::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.12); border-radius: 12px; }
+        .tabs {
+            display: flex;
+            gap: 6px;
+            background: rgba(0, 0, 0, 0.04);
+            padding: 4px;
+            border-radius: 20px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        .tab {
+            flex: 1;
+            min-width: 72px;
+            padding: 8px 4px;
+            font-size: 13px;
+            font-weight: 500;
+            text-align: center;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: 0.2s;
+            color: #334155;
+            user-select: none;
+        }
+        .tab.active { background: #ffffff; color: #0f172a; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04); }
+        .panel { display: none; animation: fadeSlide 0.3s ease; }
+        .panel.active { display: block; }
+        @keyframes fadeSlide { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .card {
+            background: rgba(255, 255, 255, 0.58);
+            border-radius: 24px;
+            padding: 20px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.65);
+        }
+        select {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 18px;
+            border: 1px solid #e2e8f0;
+            background: #ffffff;
+            font-size: 14px;
+            font-weight: 500;
+            color: #0f172a;
+            outline: none;
+            cursor: pointer;
+        }
+        .btn-primary {
+            width: 100%;
+            padding: 14px;
+            background: #2d4059;
+            color: white;
+            border: none;
+            border-radius: 28px;
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 12px;
+        }
+        .btn-primary:active { transform: scale(0.97); }
+        .strategy-group {
+            display: flex;
+            gap: 10px;
+            margin: 18px 0 12px;
+        }
+        .strategy-btn {
+            flex: 1;
+            padding: 10px 6px;
+            border-radius: 40px;
+            font-size: 13px;
+            font-weight: 500;
+            background: rgba(0, 0, 0, 0.04);
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+            user-select: none;
+        }
+        .strategy-btn.active { background: #2d4059; color: white; }
+        .ticket-type-selector {
+            display: flex;
+            gap: 8px;
+            margin: 10px 0 16px;
+        }
+        .ticket-type {
+            flex: 1;
+            padding: 10px;
+            border-radius: 20px;
+            background: #fff;
+            text-align: center;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            border: 1px solid #e9eef3;
+            transition: 0.2s;
+            user-select: none;
+        }
+        .ticket-type.active { background: #2d4059; color: #fff; }
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        .result-stat {
+            background: rgba(0, 0, 0, 0.02);
+            border-radius: 20px;
+            padding: 12px;
+            text-align: center;
+            flex: 1;
+        }
+        .result-stat .value { font-size: 28px; font-weight: 700; color: #0f172a; }
+        .notice-item {
+            background: rgba(255, 255, 255, 0.7);
+            padding: 14px 16px;
+            border-radius: 20px;
+            margin-bottom: 12px;
+            border-left: 4px solid #2d4059;
+        }
+        .spot-card {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: white;
+            border-radius: 20px;
+            margin-bottom: 12px;
+            border: 1px solid #edf2f7;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .spot-card:hover { transform: translateX(4px); background: #f8fafc; }
+        .spot-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 16px;
+            background-size: cover;
+            margin-right: 14px;
+            background-color: #cbd5e1;
+        }
+        .station-popup {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(24px);
+            border-radius: 28px;
+            padding: 20px;
+            width: 300px;
+            left: 32px;
+            bottom: 32px;
+            z-index: 200;
+            opacity: 0;
+            pointer-events: none;
+            transition: 0.25s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+            transform: translateY(16px);
+            box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+        .station-popup.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
+        .fare-table { width: 100%; font-size: 12px; background: white; border-radius: 20px; padding: 8px; border-collapse: collapse; overflow: hidden; }
+        .fare-table td { padding: 8px; border-bottom: 1px solid #eef2ff; }
+        .line-info-table { width: 100%; font-size: 12px; border-collapse: collapse; }
+        .line-info-table td { padding: 12px 6px; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .line-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 34px;
+            height: 22px;
+            padding: 0 8px;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .segment-item {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(15,23,42,0.06);
+        }
+        .map-footer {
+            position: absolute;
+            bottom: 16px;
+            right: 440px;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+            padding: 6px 14px;
+            border-radius: 40px;
+            color: white;
+            font-size: 11px;
+            z-index: 15;
+            pointer-events: none;
+        }
+        @media (max-width: 780px) {
+            .sidebar { width: 340px; padding: 16px; }
+            .map-footer { right: 360px; }
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="map-area">
+        <div class="map-header">
+            <h2>重庆轨道交通系统</h2>
+            <p>点击站点高亮</p>
+        </div>
+        <div id="mapContainer" style="width:100%; height:100%;">
+            <canvas id="mapCanvas" style="width:100%; height:100%; display:block; cursor:grab;"></canvas>
+        </div>
+        <div class="map-footer">
+            <span id="selectedInfo">点击任意站点，高亮并查看详情</span>
+        </div>
+        <div id="stationPopup" class="station-popup">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 id="popupName" style="font-weight:700;"></h3>
+                <span style="cursor:pointer; font-size:20px;" onclick="hidePopup()">×</span>
+            </div>
+            <div style="margin:8px 0 6px;">
+                <span id="popupLines" style="background:#eef2ff; padding:4px 12px; border-radius:40px; font-size:12px;"></span>
+            </div>
+            <div style="margin-top:12px;">
+                <div><span style="font-weight:600;">风景</span> <span id="popupScenery">-</span></div>
+                <div style="margin-top:6px;"><span style="font-weight:600;">人文</span> <span id="popupCulture">-</span></div>
+                <div style="margin-top:6px;"><span style="font-weight:600;">美食</span> <span id="popupFood">-</span></div>
+                <div style="margin-top:12px; background:#f1f5f9; padding:10px; border-radius:16px;">
+                    <span style="font-weight:500;">出站指引</span>
+                    <span id="popupRoute"></span>
+                </div>
+                <div style="margin-top:12px;" id="popupCrowdLevel"></div>
+            </div>
+        </div>
+    </div>
+
+    <aside class="sidebar">
+        <div class="tabs">
+            <div class="tab active" data-tab="route">路线规划</div>
+            <div class="tab" data-tab="notice">实时动态</div>
+            <div class="tab" data-tab="lineinfo">线路详情</div>
+            <div class="tab" data-tab="spot">热门打卡</div>
+            <div class="tab" data-tab="share">位置共享</div>
+        </div>
+
+        <div id="panel-route" class="panel active">
+            <div class="card">
+                <div style="margin-bottom:14px;">
+                    <label style="font-size:13px; font-weight:500;">起点站</label>
+                    <select id="startStation"></select>
+                </div>
+                <div style="margin-bottom:14px;">
+                    <label style="font-size:13px; font-weight:500;">终点站</label>
+                    <select id="endStation"></select>
+                </div>
+                <div>
+                    <label style="font-size:13px; font-weight:500;">票种优惠</label>
+                    <div class="ticket-type-selector">
+                        <div class="ticket-type active" data-type="normal">普通</div>
+                        <div class="ticket-type" data-type="student">学生5折</div>
+                        <div class="ticket-type" data-type="elder">老人免费</div>
+                        <div class="ticket-type" data-type="disabled">残疾人免费</div>
+                    </div>
+                </div>
+                <div class="strategy-group">
+                    <div class="strategy-btn active" data-strategy="time">最少时间</div>
+                    <div class="strategy-btn" data-strategy="transfer">最少换乘</div>
+                    <div class="strategy-btn" data-strategy="station">最少站数</div>
+                </div>
+                <button class="btn-primary" onclick="planRoute()">开始规划</button>
+            </div>
+            <div id="routeResult" style="background:rgba(255,255,255,0.62); border-radius:24px; padding:18px;">
+                <div class="result-row">
+                    <div class="result-stat"><div class="value" id="totalTime">—</div><div>分钟</div></div>
+                    <div class="result-stat"><div class="value" id="transferCount">0</div><div>换乘</div></div>
+                    <div class="result-stat"><div class="value" id="stationCount">0</div><div>站点</div></div>
+                    <div class="result-stat"><div class="value" id="ticketPrice">¥0</div><div>票价</div></div>
+                </div>
+                <div style="font-size:13px; margin-top:12px; display:flex; justify-content:space-between;">
+                    <span id="routeDesc">选择起终点</span>
+                    <span id="discountTag" style="background:#eef2ff; padding:2px 14px; border-radius:40px;">成人票</span>
+                </div>
+                <div id="segmentsList" style="margin-top:14px; font-size:12px; color:#334155;"></div>
+                <div id="cacheHint" style="margin-top:8px; font-size:11px; color:#64748b; text-align:center;"></div>
+            </div>
+        </div>
+
+        <div id="panel-notice" class="panel">
+            <div class="card">
+                <h4 style="margin-bottom:12px;">运营公告</h4>
+                <div id="noticeList">
+                    <div class="notice-item"><strong>全线网</strong> 平日06:30-23:00，节假日延长至23:30</div>
+                    <div class="notice-item"><strong>江跳线/璧铜线</strong> 末班21:30，高峰间隔10分钟</div>
+                    <div class="notice-item"><strong>高峰提醒</strong> 早高峰 7:30-9:00，晚高峰 17:30-19:30</div>
+                </div>
+                <div id="liveClock" style="margin-top:12px; font-weight:500;">当前时间: --:--</div>
+            </div>
+        </div>
+
+        <div id="panel-lineinfo" class="panel">
+            <div class="card">
+                <h4 style="margin-bottom:10px;">线路走向 & 运营时间</h4>
+                <table class="line-info-table" id="lineTableBody"></table>
+                <h4 style="margin:24px 0 12px;">阶梯票价表</h4>
+                <table class="fare-table">
+                    <tr><td>0-4km</td><td>2元</td><td>4-8km</td><td>3元</td><td>8-12km</td><td>4元</td></tr>
+                    <tr><td>12-17km</td><td>5元</td><td>17-23km</td><td>6元</td><td>23-30km</td><td>7元</td></tr>
+                    <tr><td>30-40km</td><td>8元</td><td>40-55km</td><td>9元</td><td>55km+</td><td>每20km+1元</td></tr>
+                </table>
+                <div style="margin-top:16px; background:#eef2ff; padding:14px; border-radius:18px;">
+                    <strong>优惠政策</strong><br>
+                    <small>畅通卡/扫码9折 · 学生卡5折 · 老年/残疾卡免费 · 月消费满100元7折，200元5折 · 1小时内公交换乘免费</small>
+                </div>
+            </div>
+        </div>
+
+        <div id="panel-spot" class="panel">
+            <div class="card">
+                <h4 style="margin-bottom:12px;">附近网红打卡地</h4>
+                <div id="nearSpotsContainer">点击地图站点，解锁周边景点</div>
+            </div>
+        </div>
+
+        <div id="panel-share" class="panel">
+            <div class="card" style="text-align:center;">
+                <h4>共享实时位置</h4>
+                <p style="margin:12px 0; font-size:13px;">与好友同步行程，安全出行</p>
+                <div onclick="shareLocation()" style="background:#2d4059; color:white; padding:14px; border-radius:40px; cursor:pointer;">开始共享行程</div>
+                <div id="shareStatus" style="margin-top:12px; font-size:12px; color:#64748b;"></div>
+            </div>
+        </div>
+    </aside>
+</div>
+
+<script>
+    const BASE_WIDTH = 1600;
+    const BASE_HEIGHT = 1445;
+
+    const lineColors = {
+        "环线": "#F4B400",
+        "1号线": "#E60021",
+        "2号线": "#008A3D",
+        "3号线": "#005EB8",
+        "4号线": "#D17A00",
+        "5号线": "#00A6D6",
+        "6号线": "#F05A92",
+        "国博线": "#F05A92",
+        "9号线": "#8A1538",
+        "10号线": "#54278F",
+        "15号线": "#0072BC",
+        "18号线": "#23BFB5",
+        "江跳线": "#0098D8",
+        "璧铜线": "#0067B1"
+    };
+
+    const RAW_LINES = [
+        {
+            id: "bitong",
+            badge: "璧铜",
+            name: "璧铜线",
+            stations: `
+铜梁西,45,125,r
+铜梁龙城天街,45,185,r
+科创新城,45,245,r
+庆隆,45,300,r
+大路,45,365,r
+青龙湖,45,430,r
+河边,45,495,r
+璧城,45,555,r
+尖顶坡,45,610,r
+璧山,45,650,b
+            `
+        },
+        {
+            id: "1",
+            badge: "1",
+            name: "1号线",
+            stations: `
+璧山,45,650,b
+尖顶坡,96,650,t
+大学城,145,650,b
+陈家桥,192,650,t
+赖家桥,242,650,t
+微电园,290,650,b
+双碑,300,610,l
+石井坡,300,680,l
+磁器口,300,725,l
+烈士墓,300,770,l
+杨公桥,320,800,l
+沙坪坝,360,835,b
+小龙坎,410,835,t
+马家岩,455,835,b
+高庙村,500,850,b
+石桥铺,485,900,b
+歇台子,530,880,t
+石油路,590,880,b
+大坪,640,850,t
+鹅岭,670,850,b
+两路口,690,850,t
+七星岗,805,850,b
+较场口,890,850,t
+小什字,970,815,r
+朝天门,970,765,r
+            `
+        },
+        {
+            id: "2",
+            badge: "2",
+            name: "2号线",
+            stations: `
+较场口,890,850,t
+临江门,900,805,r
+黄花园,860,775,t
+大溪沟,810,760,t
+曾家岩,760,760,t
+牛角沱,690,760,l
+李子坝,645,800,l
+佛图关,620,835,l
+大坪,640,850,b
+袁家岗,590,900,b
+谢家湾,590,930,t
+杨家坪,530,1045,r
+动物园,490,1088,r
+大堰村,450,1115,b
+马王场,420,1145,b
+平安,395,1175,b
+大渡口,370,1210,l
+新山村,350,1245,l
+天堂堡,330,1280,l
+建桥,315,1315,l
+金家湾,300,1345,l
+刘家坝,288,1370,l
+白居寺,520,1215,b
+大江,535,1305,b
+鱼洞,570,1365,t
+            `
+        },
+        {
+            id: "3",
+            badge: "3",
+            name: "3号线",
+            stations: `
+举人坝,1140,28,r
+莲花,1140,72,r
+观月路,1140,116,r
+高堡湖,1140,160,r
+空港广场,1140,204,r
+双凤桥,1140,248,r
+碧津,1132,292,r
+江北机场T2航站楼,1188,248,r
+双龙,1090,320,b
+回兴,1045,320,t
+长福路,1000,320,t
+翠云,805,345,l
+园博园,805,382,l
+鸳鸯,805,426,l
+金童路,805,468,l
+金渝,805,508,l
+童家院子,805,548,l
+龙头寺,805,590,l
+重庆北站南广场,805,635,r
+唐家院子,760,665,t
+郑家院子,720,665,b
+嘉州路,690,630,l
+红旗河沟,690,705,l
+观音桥,690,735,l
+华新街,690,780,l
+牛角沱,690,760,r
+两路口,690,850,l
+铜元局,720,890,b
+工贸,760,890,b
+南坪,805,940,r
+四公里,850,985,r
+重庆工商大学,850,1032,r
+六公里,850,1078,r
+重庆交通大学,850,1124,r
+八公里,830,1168,r
+麒龙,800,1205,r
+九公里,770,1235,r
+岔路口,740,1265,r
+花溪,710,1298,r
+大山村,680,1328,r
+学堂湾,650,1358,r
+鱼胡路,620,1376,t
+金竹,600,1376,b
+鱼洞,570,1365,t
+            `
+        },
+        {
+            id: "4",
+            badge: "4",
+            name: "4号线",
+            stations: `
+石马河立交,335,620,l
+玉带山,335,565,l
+南桥寺,335,525,l
+民安大道,690,575,t
+重庆北站北广场,805,590,r
+头塘,950,575,b
+保税港,970,535,t
+寸滩,1030,510,t
+黑石子,1095,500,t
+港城,1160,520,t
+太平冲,1210,535,b
+唐家沱,1260,550,b
+铁山坪,1315,550,b
+鹿栖,1370,550,b
+果园物流枢纽,1435,550,b
+雁坪,1435,480,r
+鱼嘴,1435,430,r
+石河清,1435,380,r
+复盛,1435,340,l
+三板溪,1435,300,r
+龙驿大道,1435,255,r
+龙兴,1435,215,r
+高石塔,1435,175,r
+普福,1435,135,r
+桐梓林,1435,95,r
+石船,1435,55,r
+黄岭,1435,20,r
+            `
+        },
+        {
+            id: "loop",
+            badge: "环",
+            name: "环线",
+            stations: `
+重庆西站,335,1000,t
+华岩寺,335,955,l
+凤鸣山,340,900,l
+重庆图书馆,340,850,l
+天星桥,330,800,l
+沙坪坝,360,760,l
+重庆大学,315,735,l
+玉带山,335,565,r
+南桥寺,335,525,r
+体育公园,435,575,t
+动步公园,500,575,t
+洪湖东路,570,575,t
+民安大道,690,575,b
+重庆北站北广场,805,590,l
+渝鲁,890,625,t
+五里店,970,650,r
+弹子石,1070,650,r
+涂山,1070,720,r
+仁济,1070,760,r
+上新街,1070,810,r
+海棠溪,1030,905,r
+罗家坝,980,935,b
+四公里,850,940,b
+南湖,805,985,l
+海峡路,760,985,b
+谢家湾,590,930,b
+奥体中心,530,995,t
+彩云湖,470,985,b
+二郎,425,1005,b
+华龙,370,1005,b
+            `
+        },
+        {
+            id: "5",
+            badge: "5",
+            name: "5号线",
+            stations: `
+悦港北路,775,105,l
+悦港大道,775,145,l
+椿萱大道,775,195,l
+中央公园西,775,245,t
+鲁家沟,775,300,l
+甘悦大道,775,340,l
+玉河沟,775,385,l
+园博中心,775,425,l
+丹鹤,755,470,l
+湖霞街,730,500,l
+重光,700,520,t
+和睦路,650,525,b
+人和,620,525,b
+幸福广场,565,510,b
+冉家坝,510,575,l
+大龙山,510,655,l
+大石坝,510,715,l
+忠恕沱,515,770,l
+红岩村,570,815,t
+富华路,590,850,t
+歇台子,530,880,t
+石桥铺,485,900,b
+巴山,450,935,b
+凤西路,415,975,b
+重庆西站,335,1000,b
+华岩寺,335,1050,r
+华成路,335,1095,r
+半山,335,1140,r
+中梁山,335,1185,r
+金建路,335,1230,r
+华岩中心,335,1275,r
+跳蹬,335,1325,r
+            `
+        },
+        {
+            id: "6",
+            badge: "6",
+            name: "6号线",
+            stations: `
+北碚,305,110,l
+西南大学,300,170,l
+状元碑,305,220,l
+龙凤溪,325,260,l
+向家岗,365,290,l
+蔡家,400,315,l
+曹家湾,425,350,l
+礼嘉,435,420,l
+金山寺,510,420,r
+九曲河,440,455,l
+康庄,440,490,l
+大竹林,470,520,l
+光电园,500,545,l
+冉家坝,510,575,r
+花卉园,590,650,t
+大龙山,510,655,r
+体育公园,435,575,b
+黄泥塝,645,625,b
+红土地,805,650,t
+五里店,970,650,l
+江北城,970,720,l
+大剧院,970,775,l
+小什字,970,815,l
+上新街,1070,875,t
+刘家坪,1150,875,t
+百乐园,1230,905,r
+桃花桥,1230,950,r
+长生桥,1195,990,l
+邱家湾,1195,1035,l
+茶园,1195,1080,l
+重庆东站,1240,1080,b
+            `
+        },
+        {
+            id: "guobo",
+            badge: "国博",
+            name: "国博线",
+            stations: `
+礼嘉,435,420,b
+欢乐谷,515,385,r
+黄茅坪,590,350,l
+高义口,590,300,l
+国博中心,590,255,l
+悦来,610,245,r
+王家庄,605,200,r
+清溪河,605,155,l
+刘家院子,605,115,l
+思源,605,80,l
+复兴,605,55,l
+红岩坪,605,35,l
+沙河坝,605,18,l
+            `
+        },
+        {
+            id: "9",
+            badge: "9",
+            name: "9号线",
+            stations: `
+花石沟,930,90,r
+丛岩寺,930,165,r
+三兰大道,930,260,r
+春华大道,930,305,r
+兰桂大道,930,350,r
+宝圣湖,930,395,t
+兴科大道,970,360,r
+青岗坪,1015,410,t
+石盘河,1015,450,r
+何家梁,1015,485,r
+邮轮母港,1015,520,b
+保税港,970,535,b
+头塘,950,575,t
+溉澜溪,950,650,r
+五里店,970,650,t
+江北城,970,720,r
+刘家台,870,720,t
+鲤鱼池,805,720,t
+观音桥,690,735,r
+蚂蝗梁,640,720,t
+李家坪,590,760,t
+化龙桥,560,795,l
+富华路,590,850,b
+红岩村,570,815,b
+土湾,430,800,t
+小龙坎,410,835,b
+沙坪坝,360,835,t
+天梨路,330,855,l
+高滩岩,330,890,l
+新桥,330,930,l
+            `
+        },
+        {
+            id: "10",
+            badge: "10",
+            name: "10号线",
+            stations: `
+王家庄,605,200,l
+悦来,610,245,b
+中央公园西,775,245,b
+中央公园,850,245,b
+中央公园东,930,245,b
+鹿山,980,245,t
+渝北广场,1030,245,t
+江北机场T2航站楼,1188,248,l
+江北机场T3航站楼,1195,365,r
+长河,1180,410,b
+环山公园,1130,410,t
+上湾路,1080,410,t
+三亚湾,990,415,t
+民心佳园,925,455,b
+重庆北站北广场,805,590,l
+重庆北站南广场,805,635,l
+龙头寺公园,805,695,r
+红土地,805,650,r
+鲤鱼池,805,720,r
+大礼堂,805,765,r
+七星岗,805,850,r
+后堡,805,900,r
+南坪,805,940,l
+南湖,805,985,r
+兰花路,760,1040,b
+            `
+        },
+        {
+            id: "15",
+            badge: "15",
+            name: "15号线",
+            stations: `
+井口,290,390,b
+礼学路,370,390,b
+金山寺,510,420,t
+重光,700,520,b
+和睦路,650,525,t
+金福路,760,470,b
+湖霞街,730,500,t
+西南政法大学,870,345,t
+宝圣湖,930,395,b
+兴科大道,970,360,b
+回兴,1045,320,b
+双龙,1090,320,t
+双龙湖,1145,360,b
+天堡,1290,395,t
+龙港大道,1370,410,b
+福慧大道,1500,360,l
+两江影视城,1500,300,l
+            `
+        },
+        {
+            id: "18",
+            badge: "18",
+            name: "18号线",
+            stations: `
+富华路,590,850,r
+歇台子,530,880,l
+奥体中心,530,995,b
+石坪桥,490,990,t
+杨家坪,530,1045,l
+滩子口,575,1090,r
+黄桷坪,575,1135,r
+四川美术学院,575,1180,r
+电厂,575,1225,r
+李家沱大桥,575,1270,r
+重庆理工大学,575,1315,r
+花溪工业园,575,1360,r
+巴滨路湿地公园,520,1360,t
+茄子溪,500,1325,t
+跳蹬南,350,1325,b
+            `
+        },
+        {
+            id: "jiangTiao",
+            badge: "江跳",
+            name: "江跳线",
+            stations: `
+跳蹬,335,1325,t
+享堂,245,1255,t
+双福,198,1255,t
+九龙园,155,1255,t
+石林寺,115,1255,t
+江津高铁,70,1265,l
+圣泉寺,60,1325,l
+几江,45,1385,l
+鼎山,45,1430,l
+            `
+        }
+    ];
+
+    function parseStations(text) {
+        return text.trim().split(/\n+/).map(row => {
+            const [name, x, y, label = "r"] = row.split(",").map(part => part.trim());
+            return { name, x: Number(x), y: Number(y), label };
+        });
+    }
+
+    const lineData = RAW_LINES.map(line => ({
+        ...line,
+        color: lineColors[line.name],
+        stations: parseStations(line.stations)
+    }));
+
+    const stationMap = new Map();
+    lineData.forEach(line => {
+        line.stations.forEach(station => {
+            if (!stationMap.has(station.name)) {
+                stationMap.set(station.name, {
+                    name: station.name,
+                    x: station.x,
+                    y: station.y,
+                    sumX: station.x,
+                    sumY: station.y,
+                    count: 1,
+                    label: station.label,
+                    lines: []
+                });
+            } else {
+                const existing = stationMap.get(station.name);
+                existing.sumX += station.x;
+                existing.sumY += station.y;
+                existing.count += 1;
+            }
+            const item = stationMap.get(station.name);
+            if (!item.lines.includes(line.name)) item.lines.push(line.name);
+        });
+    });
+
+    stationMap.forEach(station => {
+        station.x = station.sumX / station.count;
+        station.y = station.sumY / station.count;
+    });
+
+    const stations = Array.from(stationMap.values()).sort((a, b) => a.name.localeCompare(b.name, "zh-Hans-CN"));
+    const transferStations = new Set(stations.filter(station => station.lines.length > 1).map(station => station.name));
+    const majorStations = new Set([
+        "朝天门", "小什字", "较场口", "两路口", "大坪", "沙坪坝", "重庆西站", "观音桥", "红旗河沟", "重庆北站北广场",
+        "重庆北站南广场", "江北机场T2航站楼", "江北机场T3航站楼", "鱼洞", "茶园", "北碚", "璧山", "跳蹬", "礼嘉",
+        "五里店", "上新街", "南坪", "冉家坝", "红土地", "富华路"
+    ]);
+
+    window.metroData = {
+        colors: lineColors,
+        lines: lineData,
+        stations: stations.map(({ name, x, y, lines }) => ({ name, x, y, lines }))
+    };
+
+    function fillSelects() {
+        const grouped = {};
+        stations.forEach(station => {
+            const first = station.name.charAt(0);
+            if (!grouped[first]) grouped[first] = [];
+            grouped[first].push(station.name);
+        });
+        const html = Object.keys(grouped).sort((a, b) => a.localeCompare(b, "zh-Hans-CN")).map(letter => {
+            const options = grouped[letter]
+                .sort((a, b) => a.localeCompare(b, "zh-Hans-CN"))
+                .map(name => `<option value="${name}">${name}</option>`)
+                .join("");
+            return `<optgroup label="${letter}">${options}</optgroup>`;
+        }).join("");
+        document.getElementById("startStation").innerHTML = html;
+        document.getElementById("endStation").innerHTML = html;
+        document.getElementById("startStation").value = "朝天门";
+        document.getElementById("endStation").value = "观音桥";
+    }
+
+    const scenicMap = {
+        "朝天门": { scenery: "两江交汇、来福士", culture: "重庆零公里", food: "火锅小面", crowdLevel: "拥挤" },
+        "小什字": { scenery: "洪崖洞、长江索道", culture: "罗汉寺", food: "酸辣粉", crowdLevel: "非常拥挤" },
+        "李子坝": { scenery: "轻轨穿楼", culture: "网红打卡", food: "李子坝梁山鸡", crowdLevel: "拥挤" },
+        "磁器口": { scenery: "千年古镇", culture: "巴渝民俗", food: "陈麻花", crowdLevel: "非常拥挤" },
+        "观音桥": { scenery: "商圈夜景", culture: "潮流街区", food: "火锅烧烤", crowdLevel: "拥挤" },
+        "较场口": { scenery: "解放碑商圈", culture: "山城步道", food: "八一好吃街", crowdLevel: "拥挤" },
+        "沙坪坝": { scenery: "三峡广场", culture: "高校文化", food: "熨斗糕、小面", crowdLevel: "拥挤" },
+        "弹子石": { scenery: "南滨路江景", culture: "弹子石老街", food: "江湖菜", crowdLevel: "中等" }
+    };
+
+    const canvas = document.getElementById("mapCanvas");
+    const ctx = canvas.getContext("2d");
+    let canvasWidth = 0;
+    let canvasHeight = 0;
+    let scale = 1.08;
+    let offsetX = 0;
+    let offsetY = 0;
+    let isDragging = false;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+    let selectedStationName = null;
+    let activeRouteStations = new Set();
+    let activeRouteEdges = new Set();
+    let currentTicket = "normal";
+    let currentStrategy = "time";
+
+    const graph = buildGraph(lineData);
+
+    function getUsableWidth() {
+        return Math.max(420, canvasWidth - 460);
+    }
+
+    function project(x, y) {
+        const usableWidth = getUsableWidth();
+        const marginX = 28;
+        const marginY = 18;
+        return {
+            x: marginX + (x / BASE_WIDTH) * (usableWidth - marginX * 2),
+            y: marginY + (y / BASE_HEIGHT) * (canvasHeight - marginY * 2)
+        };
+    }
+
+    function drawMap() {
+        if (!ctx) return;
+        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+        ctx.save();
+        ctx.translate(offsetX, offsetY);
+        ctx.scale(scale, scale);
+        drawBackground();
+        drawRoutes();
+        drawStations();
+        drawLineBadges();
+        ctx.restore();
+    }
+
+    function drawBackground() {
+        ctx.save();
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.strokeStyle = "rgba(147, 197, 253, 0.42)";
+        ctx.lineWidth = 18 / scale;
+        drawPolyline([[250,20],[365,130],[520,245],[535,290],[535,345],[500,380],[335,380],[295,405],[230,555],[195,590],[160,610]], false, true);
+        drawPolyline([[15,1410],[15,1340],[45,1315],[390,1315],[455,1290],[635,1115],[700,1090],[850,1090],[925,1040],[1010,850],[1070,815],[1130,815],[1185,850],[1250,930],[1320,965],[1430,965],[1460,930],[1460,775],[1500,735],[1585,735]], false, true);
+        ctx.fillStyle = "rgba(80, 132, 158, 0.34)";
+        ctx.font = `${18 / scale}px Inter, sans-serif`;
+        const jialing = project(250, 690);
+        ctx.save();
+        ctx.translate(jialing.x, jialing.y);
+        ctx.rotate(Math.PI / 2);
+        ctx.fillText("嘉陵江 The Jialing River", 0, 0);
+        ctx.restore();
+        const yangtze = project(1240, 690);
+        ctx.fillText("长江 The Yangtze River", yangtze.x, yangtze.y);
+        ctx.restore();
+    }
+
+    function drawRoutes() {
+        lineData.forEach(line => {
+            const routeKey = line.id;
+            const isActive = activeRouteEdges.size === 0 || Array.from(activeRouteEdges).some(edge => edge.includes(`|${line.name}|`));
+            ctx.globalAlpha = activeRouteEdges.size && !isActive ? 0.18 : 1;
+            ctx.lineWidth = activeRouteEdges.size ? 5.4 / scale : 4.2 / scale;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            ctx.strokeStyle = line.color;
+            drawPolyline(line.stations.map(station => [station.x, station.y]), false, false, routeKey);
+        });
+        ctx.globalAlpha = 1;
+        if (activeRouteEdges.size) {
+            ctx.save();
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            ctx.lineWidth = 8 / scale;
+            lineData.forEach(line => {
+                ctx.beginPath();
+                let started = false;
+                line.stations.forEach((station, index) => {
+                    if (index === 0) return;
+                    const prev = line.stations[index - 1];
+                    const key = edgeKey(prev.name, station.name, line.name);
+                    if (!activeRouteEdges.has(key)) {
+                        started = false;
+                        return;
+                    }
+                    const a = project(prev.x, prev.y);
+                    const b = project(station.x, station.y);
+                    if (!started) {
+                        ctx.moveTo(a.x, a.y);
+                        started = true;
+                    }
+                    ctx.lineTo(b.x, b.y);
+                });
+                ctx.strokeStyle = line.color;
+                ctx.stroke();
+            });
+            ctx.restore();
+        }
+    }
+
+    function drawPolyline(points, fill, alreadyProjected) {
+        if (points.length < 2) return;
+        ctx.beginPath();
+        points.forEach(([x, y], index) => {
+            const p = alreadyProjected ? project(x, y) : project(x, y);
+            if (index === 0) ctx.moveTo(p.x, p.y);
+            else ctx.lineTo(p.x, p.y);
+        });
+        if (fill) ctx.fill();
+        else ctx.stroke();
+    }
+
+    function drawStations() {
+        lineData.forEach(line => {
+            line.stations.forEach(station => {
+                const p = project(station.x, station.y);
+                const isSelected = selectedStationName === station.name;
+                const inRoute = activeRouteStations.has(station.name);
+                const isTransfer = transferStations.has(station.name);
+                ctx.save();
+                if (activeRouteStations.size && !inRoute) ctx.globalAlpha = 0.25;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, (isTransfer ? 5.5 : 4.2) / scale, 0, Math.PI * 2);
+                ctx.fillStyle = "#ffffff";
+                ctx.fill();
+                ctx.lineWidth = (isTransfer ? 2.2 : 1.5) / scale;
+                ctx.strokeStyle = isTransfer ? "#25364a" : line.color;
+                ctx.stroke();
+                if (isSelected) {
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 11 / scale, 0, Math.PI * 2);
+                    ctx.fillStyle = "rgba(250, 204, 21, 0.35)";
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 5.5 / scale, 0, Math.PI * 2);
+                    ctx.fillStyle = "#facc15";
+                    ctx.fill();
+                    ctx.lineWidth = 1.8 / scale;
+                    ctx.strokeStyle = "#172033";
+                    ctx.stroke();
+                }
+                ctx.restore();
+            });
+        });
+
+        stations.forEach(station => {
+            const shouldLabel = scale > 1.55 || transferStations.has(station.name) || majorStations.has(station.name) || selectedStationName === station.name || activeRouteStations.has(station.name);
+            if (!shouldLabel) return;
+            const p = project(station.x, station.y);
+            const offset = labelOffset(station.label);
+            ctx.save();
+            if (activeRouteStations.size && !activeRouteStations.has(station.name)) ctx.globalAlpha = 0.32;
+            ctx.font = `${(selectedStationName === station.name ? 14 : 11) / scale}px Inter, "PingFang SC", sans-serif`;
+            ctx.textAlign = offset.align;
+            ctx.textBaseline = offset.baseline;
+            ctx.lineWidth = 4 / scale;
+            ctx.strokeStyle = "rgba(255,255,255,0.95)";
+            ctx.strokeText(station.name, p.x + offset.x / scale, p.y + offset.y / scale);
+            ctx.fillStyle = "#0f172a";
+            ctx.fillText(station.name, p.x + offset.x / scale, p.y + offset.y / scale);
+            ctx.restore();
+        });
+    }
+
+    function drawLineBadges() {
+        lineData.forEach(line => {
+            const first = line.stations[0];
+            const last = line.stations[line.stations.length - 1];
+            drawBadge(line, first.x, first.y, -22, -18);
+            drawBadge(line, last.x, last.y, 22, 18);
+        });
+    }
+
+    function drawBadge(line, x, y, dx, dy) {
+        const p = project(x, y);
+        const bx = p.x + dx / scale;
+        const by = p.y + dy / scale;
+        ctx.save();
+        ctx.fillStyle = line.color;
+        if (line.badge.length > 2) {
+            roundRect(bx - 19 / scale, by - 11 / scale, 38 / scale, 22 / scale, 5 / scale);
+            ctx.fill();
+        } else {
+            ctx.beginPath();
+            ctx.arc(bx, by, 12 / scale, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.fillStyle = "#fff";
+        ctx.font = `700 ${12 / scale}px Inter, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(line.badge, bx, by + 0.5 / scale);
+        ctx.restore();
+    }
+
+    function roundRect(x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+    }
+
+    function labelOffset(position) {
+        const map = {
+            r: { x: 10, y: 0, align: "left", baseline: "middle" },
+            l: { x: -10, y: 0, align: "right", baseline: "middle" },
+            t: { x: 0, y: -12, align: "center", baseline: "bottom" },
+            b: { x: 0, y: 14, align: "center", baseline: "top" }
+        };
+        return map[position] || map.r;
+    }
+
+    function resizeAndDraw() {
+        const container = document.getElementById("mapContainer");
+        const rect = container.getBoundingClientRect();
+        const ratio = window.devicePixelRatio || 1;
+        canvasWidth = rect.width;
+        canvasHeight = rect.height;
+        canvas.width = Math.max(1, Math.floor(canvasWidth * ratio));
+        canvas.height = Math.max(1, Math.floor(canvasHeight * ratio));
+        canvas.style.width = `${canvasWidth}px`;
+        canvas.style.height = `${canvasHeight}px`;
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+        scale = window.innerWidth < 900 ? 1.25 : 1.08;
+        const center = project(BASE_WIDTH / 2, BASE_HEIGHT / 2);
+        offsetX = getUsableWidth() / 2 - center.x * scale + 18;
+        offsetY = canvasHeight / 2 - center.y * scale;
+        drawMap();
+    }
+
+    function handleCanvasClick(e) {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = (e.clientX - rect.left - offsetX) / scale;
+        const mouseY = (e.clientY - rect.top - offsetY) / scale;
+        let closest = null;
+        let minDist = 18 / scale;
+        stations.forEach(station => {
+            const p = project(station.x, station.y);
+            const d = Math.hypot(p.x - mouseX, p.y - mouseY);
+            if (d < minDist) {
+                minDist = d;
+                closest = station;
+            }
+        });
+        if (closest) {
+            selectedStationName = closest.name;
+            activeRouteStations.clear();
+            activeRouteEdges.clear();
+            showPopup(closest);
+            drawMap();
+        }
+    }
+
+    canvas.addEventListener("click", handleCanvasClick);
+    canvas.addEventListener("mousedown", e => {
+        isDragging = true;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        canvas.style.cursor = "grabbing";
+    });
+    window.addEventListener("mousemove", e => {
+        if (!isDragging) return;
+        offsetX += e.clientX - lastMouseX;
+        offsetY += e.clientY - lastMouseY;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        drawMap();
+    });
+    window.addEventListener("mouseup", () => {
+        isDragging = false;
+        canvas.style.cursor = "grab";
+    });
+    canvas.addEventListener("wheel", e => {
+        e.preventDefault();
+        const before = {
+            x: (e.clientX - canvas.getBoundingClientRect().left - offsetX) / scale,
+            y: (e.clientY - canvas.getBoundingClientRect().top - offsetY) / scale
+        };
+        const nextScale = Math.min(Math.max(scale * (e.deltaY > 0 ? 0.92 : 1.08), 0.72), 5.8);
+        offsetX += before.x * (scale - nextScale);
+        offsetY += before.y * (scale - nextScale);
+        scale = nextScale;
+        drawMap();
+    }, { passive: false });
+    window.addEventListener("resize", resizeAndDraw);
+
+    function buildGraph(lines) {
+        const map = new Map();
+        const ensure = name => {
+            if (!map.has(name)) map.set(name, []);
+            return map.get(name);
+        };
+        lines.forEach(line => {
+            line.stations.forEach(station => ensure(station.name));
+            for (let i = 1; i < line.stations.length; i += 1) {
+                const a = line.stations[i - 1];
+                const b = line.stations[i];
+                const distance = Math.hypot(a.x - b.x, a.y - b.y);
+                const edge = { line: line.name, color: line.color, distance, time: Math.max(1.5, distance / 32) };
+                map.get(a.name).push({ to: b.name, ...edge });
+                map.get(b.name).push({ to: a.name, ...edge });
+            }
+        });
+        return map;
+    }
+
+    function findRoute(startName, endName, strategy) {
+        const startKey = `${startName}|`;
+        const dist = new Map([[startKey, 0]]);
+        const meta = new Map([[startKey, { station: startName, line: "", transfers: 0, stops: 0, distance: 0, time: 0 }]]);
+        const prev = new Map();
+        const queue = [startKey];
+        const visited = new Set();
+
+        while (queue.length) {
+            queue.sort((a, b) => dist.get(a) - dist.get(b));
+            const key = queue.shift();
+            if (visited.has(key)) continue;
+            visited.add(key);
+            const state = meta.get(key);
+            if (state.station === endName) return rebuildRoute(key, prev, meta);
+            const edges = graph.get(state.station) || [];
+            edges.forEach(edge => {
+                const transfer = state.line && state.line !== edge.line ? 1 : 0;
+                const nextKey = `${edge.to}|${edge.line}`;
+                const nextMeta = {
+                    station: edge.to,
+                    line: edge.line,
+                    transfers: state.transfers + transfer,
+                    stops: state.stops + 1,
+                    distance: state.distance + edge.distance,
+                    time: state.time + edge.time + transfer * 4
+                };
+                const weight = routeWeight(nextMeta, strategy);
+                if (!dist.has(nextKey) || weight < dist.get(nextKey)) {
+                    dist.set(nextKey, weight);
+                    meta.set(nextKey, nextMeta);
+                    prev.set(nextKey, { key, edge });
+                    queue.push(nextKey);
+                }
+            });
+        }
+        return null;
+    }
+
+    function routeWeight(route, strategy) {
+        if (strategy === "transfer") return route.transfers * 1000 + route.stops;
+        if (strategy === "station") return route.stops * 10 + route.transfers * 2;
+        return route.time;
+    }
+
+    function rebuildRoute(endKey, prev, meta) {
+        const states = [];
+        const edges = [];
+        let key = endKey;
+        while (key) {
+            states.push(meta.get(key));
+            const item = prev.get(key);
+            if (!item) break;
+            edges.push(item.edge);
+            key = item.key;
+        }
+        states.reverse();
+        edges.reverse();
+        return {
+            stations: states.map(state => state.station),
+            edges,
+            transfers: states[states.length - 1].transfers,
+            stops: states[states.length - 1].stops,
+            distance: states[states.length - 1].distance,
+            time: states[states.length - 1].time
+        };
+    }
+
+    function edgeKey(a, b, line) {
+        return [a, b].sort().join("<>") + `|${line}|`;
+    }
+
+    function compressSegments(route) {
+        const segments = [];
+        route.edges.forEach((edge, index) => {
+            const from = route.stations[index];
+            const to = route.stations[index + 1];
+            const last = segments[segments.length - 1];
+            if (last && last.line === edge.line) {
+                last.to = to;
+                last.stops += 1;
+            } else {
+                segments.push({ line: edge.line, color: edge.color, from, to, stops: 1 });
+            }
+        });
+        return segments;
+    }
+
+    function calcFare(km) {
+        if (km <= 4) return 2;
+        if (km <= 8) return 3;
+        if (km <= 12) return 4;
+        if (km <= 17) return 5;
+        if (km <= 23) return 6;
+        if (km <= 30) return 7;
+        if (km <= 40) return 8;
+        if (km <= 55) return 9;
+        return 9 + Math.ceil((km - 55) / 20);
+    }
+
+    async function planRoute() {
+        const startName = document.getElementById("startStation").value;
+        const endName = document.getElementById("endStation").value;
+        if (startName === endName) {
+            document.getElementById("segmentsList").innerHTML = "<div>起点和终点相同，请重新选择。</div>";
+            return;
+        }
+        const route = findRoute(startName, endName, currentStrategy);
+        if (!route) {
+            document.getElementById("segmentsList").innerHTML = "<div>暂未找到可达路径。</div>";
+            return;
+        }
+        activeRouteStations = new Set(route.stations);
+        activeRouteEdges = new Set();
+        route.edges.forEach((edge, index) => {
+            activeRouteEdges.add(edgeKey(route.stations[index], route.stations[index + 1], edge.line));
+        });
+        selectedStationName = startName;
+
+        const km = Math.max(route.stops * 1.05, route.distance * 0.038);
+        let price = calcFare(km);
+        if (currentTicket === "student") price = Math.round(price * 0.5);
+        if (currentTicket === "elder" || currentTicket === "disabled") price = 0;
+        const time = Math.max(3, Math.round(route.time));
+        const segments = compressSegments(route);
+
+        document.getElementById("totalTime").innerText = time;
+        document.getElementById("transferCount").innerText = route.transfers;
+        document.getElementById("stationCount").innerText = route.stops;
+        document.getElementById("ticketPrice").innerText = `¥${price}`;
+        document.getElementById("routeDesc").innerHTML = `${startName} → ${endName}`;
+        document.getElementById("segmentsList").innerHTML = segments.map(segment => `
+            <div class="segment-item">
+                <span class="line-pill" style="background:${segment.color}">${segment.line.replace("号线", "")}</span>
+                <span>${segment.from} → ${segment.to}，${segment.stops}站</span>
+            </div>
+        `).join("");
+        const discountMap = { normal: "成人票", student: "学生5折", elder: "老人免费", disabled: "残疾人免费" };
+        document.getElementById("discountTag").innerText = discountMap[currentTicket];
+        document.getElementById("cacheHint").innerText = `按图中线路拓扑计算，估算距离约 ${km.toFixed(1)}km。`;
+        showPopup(stationMap.get(startName));
+        drawMap();
+    }
+
+    async function showPopup(station) {
+        const info = scenicMap[station.name] || { scenery: "山城风光", culture: "巴渝底蕴", food: "重庆美食", crowdLevel: "中等" };
+        document.getElementById("popupName").innerText = station.name;
+        document.getElementById("popupLines").innerText = station.lines.join(" · ");
+        document.getElementById("popupScenery").innerText = info.scenery;
+        document.getElementById("popupCulture").innerText = info.culture;
+        document.getElementById("popupFood").innerText = info.food;
+        document.getElementById("popupRoute").innerText = `${station.name}站按站内导向牌出站`;
+        document.getElementById("popupCrowdLevel").innerHTML = `<span style="font-weight:500;">拥挤度:</span> ${info.crowdLevel}`;
+        document.getElementById("stationPopup").classList.add("show");
+        document.getElementById("selectedInfo").innerHTML = `${station.name} (${station.lines.join("/")}) 已高亮`;
+        updateNearSpots(station.name);
+    }
+
+    window.hidePopup = () => document.getElementById("stationPopup").classList.remove("show");
+
+    function updateNearSpots(stationName) {
+        const spotMap = {
+            "小什字": ["洪崖洞", "长江索道"],
+            "朝天门": ["来福士广场", "朝天门码头"],
+            "李子坝": ["轻轨穿楼观景台"],
+            "磁器口": ["磁器口古镇"],
+            "弹子石": ["弹子石老街"],
+            "较场口": ["解放碑", "山城步道"],
+            "观音桥": ["观音桥好吃街", "北城天街"]
+        };
+        const spots = spotMap[stationName] || [];
+        const container = document.getElementById("nearSpotsContainer");
+        if (!spots.length) {
+            container.innerHTML = "<div>点击站点，发现周边网红打卡地</div>";
+            return;
+        }
+        container.innerHTML = spots.map(spot => `
+            <div class="spot-card" onclick="alert('${spot} - 重庆打卡地')">
+                <div class="spot-icon" style="background:linear-gradient(135deg,#2d4059,#23bfb5)"></div>
+                <div><strong>${spot}</strong><div style="font-size:12px;">网红打卡地</div></div>
+            </div>
+        `).join("");
+    }
+
+    function renderLineInfo() {
+        document.getElementById("lineTableBody").innerHTML = lineData.map(line => {
+            const first = line.stations[0].name;
+            const last = line.stations[line.stations.length - 1].name;
+            return `
+                <tr>
+                    <td><span class="line-pill" style="background:${line.color}">${line.badge}</span></td>
+                    <td>${first} → ${last}</td>
+                    <td>${line.stations.length}站</td>
+                </tr>
+            `;
+        }).join("");
+    }
+
+    document.querySelectorAll(".tab").forEach(tab => tab.addEventListener("click", function() {
+        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+        this.classList.add("active");
+        document.querySelectorAll(".panel").forEach(panel => panel.classList.remove("active"));
+        document.getElementById(`panel-${this.dataset.tab}`).classList.add("active");
+    }));
+
+    document.querySelectorAll(".ticket-type").forEach(el => el.addEventListener("click", function() {
+        document.querySelectorAll(".ticket-type").forEach(t => t.classList.remove("active"));
+        this.classList.add("active");
+        currentTicket = this.dataset.type;
+    }));
+
+    document.querySelectorAll(".strategy-btn").forEach(btn => btn.addEventListener("click", function() {
+        document.querySelectorAll(".strategy-btn").forEach(b => b.classList.remove("active"));
+        this.classList.add("active");
+        currentStrategy = this.dataset.strategy;
+    }));
+
+    function updateClock() {
+        const d = new Date();
+        document.getElementById("liveClock").innerHTML = `当前时间: ${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+    }
+
+    window.shareLocation = () => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                () => document.getElementById("shareStatus").innerHTML = "位置已共享",
+                () => document.getElementById("shareStatus").innerHTML = "已开启模拟共享"
+            );
+        } else {
+            document.getElementById("shareStatus").innerHTML = "当前浏览器不支持定位";
+        }
+    };
+
+    window.planRoute = planRoute;
+
+    fillSelects();
+    renderLineInfo();
+    updateClock();
+    setInterval(updateClock, 1000);
+    resizeAndDraw();
+    setTimeout(() => {
+        const init = stationMap.get("朝天门");
+        if (init) {
+            selectedStationName = init.name;
+            showPopup(init);
+            drawMap();
+        }
+    }, 300);
+</script>
+</body>
+</html>
