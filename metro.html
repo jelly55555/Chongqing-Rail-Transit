@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>重庆轨道交通系统</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+        body {
+            font-family: 'Inter', -apple-system, "PingFang SC", sans-serif;
+            background: #e2e8f0;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #app {
+            position: relative;
+            width: 96vw;
+            height: 94vh;
+            background: #f8fafc;
+            border-radius: 32px;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.12);
+            overflow: hidden;
+        }
+        .map-area {
+            position: absolute;
+            inset: 0;
+            background: #ecf3f9;
+            z-index: 1;
+        }
+        .map-header {
+            position: absolute;
+            top: 24px;
+            left: 24px;
+            z-index: 20;
+            pointer-events: none;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            padding: 8px 20px;
+            border-radius: 60px;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+        .map-header h2 { font-size: 20px; font-weight: 600; color: #0f172a; }
+        .map-header p { font-size: 11px; color: #475569; }
+        .sidebar {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            bottom: 20px;
+            width: 400px;
+            background: rgba(255, 255, 255, 0.86);
+            backdrop-filter: blur(28px);
+            border-radius: 32px;
+            z-index: 100;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: -8px 0 30px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            padding: 20px 22px;
+            overflow-y: auto;
+        }
+        .sidebar::-webkit-scrollbar { width: 4px; }
+        .sidebar::-webkit-scrollbar-track { background: transparent; }
+        .sidebar::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.12); border-radius: 12px; }
+        .tabs {
+            display: flex;
+            gap: 6px;
+            background: rgba(0, 0, 0, 0.04);
+            padding: 4px;
+            border-radius: 20px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        .tab {
+            flex: 1;
+            padding: 8px 4px;
+            font-size: 13px;
+            font-weight: 500;
+            text-align: center;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: 0.2s;
+            color: #334155;
+        }
+        .tab.active { background: #ffffff; color: #0f172a; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04); }
+        .panel { display: none; animation: fadeSlide 0.3s ease; }
+        .panel.active { display: block; }
+        @keyframes fadeSlide { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .card {
+            background: rgba(255, 255, 255, 0.55);
+            border-radius: 24px;
+            padding: 20px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+        select {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 18px;
+            border: 1px solid #e2e8f0;
+            background: #ffffff;
+            font-size: 14px;
+            font-weight: 500;
+            color: #0f172a;
+            outline: none;
+            cursor: pointer;
+        }
+        .btn-primary {
+            width: 100%;
+            padding: 14px;
+            background: #2d4059;
+            color: white;
+            border: none;
+            border-radius: 28px;
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 12px;
+        }
+        .btn-primary:active { transform: scale(0.97); }
+        .strategy-group {
+            display: flex;
+            gap: 10px;
+            margin: 18px 0 12px;
+        }
+        .strategy-btn {
+            flex: 1;
+            padding: 10px 6px;
+            border-radius: 40px;
+            font-size: 13px;
+            font-weight: 500;
+            background: rgba(0, 0, 0, 0.04);
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .strategy-btn.active { background: #2d4059; color: white; }
+        .ticket-type-selector {
+            display: flex;
+            gap: 8px;
+            margin: 10px 0 16px;
+        }
+        .ticket-type {
+            flex: 1;
+            padding: 10px;
+            border-radius: 20px;
+            background: #fff;
+            text-align: center;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            border: 1px solid #e9eef3;
+            transition: 0.2s;
+        }
+        .ticket-type.active { background: #2d4059; color: #fff; }
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        .result-stat {
+            background: rgba(0, 0, 0, 0.02);
+            border-radius: 20px;
+            padding: 12px;
+            text-align: center;
+            flex: 1;
+        }
+        .result-stat .value { font-size: 28px; font-weight: 700; color: #0f172a; }
+        .notice-item {
+            background: rgba(255, 255, 255, 0.7);
+            padding: 14px 16px;
+            border-radius: 20px;
+            margin-bottom: 12px;
+            border-left: 4px solid #2d4059;
+        }
+        .spot-card {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: white;
+            border-radius: 20px;
+            margin-bottom: 12px;
+            border: 1px solid #edf2f7;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .spot-card:hover { transform: translateX(4px); background: #f8fafc; }
+        .spot-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 16px;
+            background-size: cover;
+            margin-right: 14px;
+            background-color: #cbd5e1;
+        }
+        .station-popup {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(24px);
+            border-radius: 28px;
+            padding: 20px;
+            width: 300px;
+            left: 32px;
+            bottom: 32px;
+            z-index: 200;
+            opacity: 0;
+            pointer-events: none;
+            transition: 0.25s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+            transform: translateY(16px);
+            box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+        .station-popup.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
+        .fare-table { width: 100%; font-size: 12px; background: white; border-radius: 20px; padding: 8px; border-collapse: collapse; }
+        .fare-table td { padding: 8px; border-bottom: 1px solid #eef2ff; }
+        .line-info-table { width: 100%; font-size: 12px; border-collapse: collapse; }
+        .line-info-table td { padding: 12px 6px; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .map-footer {
+            position: absolute;
+            bottom: 16px;
+            right: 420px;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+            padding: 6px 14px;
+            border-radius: 40px;
+            color: white;
+            font-size: 11px;
+            z-index: 15;
+            pointer-events: none;
+        }
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 0.6s linear infinite;
+            margin-right: 8px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width: 780px) {
+            .sidebar { width: 340px; padding: 16px; }
+            .map-footer { right: 360px; }
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="map-area">
+        <div class="map-header">
+            <h2>重庆轨道交通系统</h2>
+            <p>🖱️ 点击站点高亮 | 滚动缩放</p>
+        </div>
+        <div id="mapContainer" style="width:100%; height:100%;">
+            <canvas id="mapCanvas" style="width:100%; height:100%; display: block;"></canvas>
+        </div>
+        <div class="map-footer">
+            <span id="selectedInfo">✨ 点击任意站点，高亮并查看详情</span>
+        </div>
+        <div id="stationPopup" class="station-popup">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 id="popupName" style="font-weight: 700;"></h3>
+                <span style="cursor:pointer; font-size:20px;" onclick="hidePopup()">✕</span>
+            </div>
+            <div style="margin: 8px 0 6px;"><span id="popupLines" style="background:#eef2ff; padding:4px 12px; border-radius:40px; font-size:12px;"></span></div>
+            <div style="margin-top: 12px;">
+                <div><span style="font-weight:600;">🏞️ 风景</span> <span id="popupScenery">-</span></div>
+                <div style="margin-top:6px;"><span style="font-weight:600;">📖 人文</span> <span id="popupCulture">-</span></div>
+                <div style="margin-top:6px;"><span style="font-weight:600;">🍜 美食</span> <span id="popupFood">-</span></div>
+                <div style="margin-top:12px; background:#f1f5f9; padding:10px; border-radius:16px;">
+                    <span style="font-weight:500;">🚪 出站指引</span> 
+                    <span id="popupRoute"></span>
+                </div>
+                <div style="margin-top:12px;" id="popupCrowdLevel"></div>
+            </div>
+        </div>
+    </div>
+
+    <aside class="sidebar">
+        <div class="tabs">
+            <div class="tab active" data-tab="route">路线规划</div>
+            <div class="tab" data-tab="notice">实时动态</div>
+            <div class="tab" data-tab="lineinfo">线路详情</div>
+            <div class="tab" data-tab="spot">热门打卡</div>
+            <div class="tab" data-tab="share">位置共享</div>
+        </div>
+
+        <div id="panel-route" class="panel active">
+            <div class="card">
+                <div style="margin-bottom: 14px;"><label style="font-size:13px; font-weight:500;">起点站</label>
+                    <select id="startStation"></select>
+                </div>
+                <div style="margin-bottom: 14px;"><label style="font-size:13px; font-weight:500;">终点站</label>
+                    <select id="endStation"></select>
+                </div>
+                <div><label style="font-size:13px; font-weight:500;">票种优惠</label>
+                    <div class="ticket-type-selector">
+                        <div class="ticket-type active" data-type="normal">普通</div>
+                        <div class="ticket-type" data-type="student">学生5折</div>
+                        <div class="ticket-type" data-type="elder">老人免费</div>
+                        <div class="ticket-type" data-type="disabled">残疾人免费</div>
+                    </div>
+                </div>
+                <div class="strategy-group">
+                    <div class="strategy-btn active" data-strategy="time">⏱️ 最少时间</div>
+                    <div class="strategy-btn" data-strategy="transfer">🔄 最少换乘</div>
+                    <div class="strategy-btn" data-strategy="station">📍 最少站数</div>
+                </div>
+                <button class="btn-primary" onclick="planRoute()">开始规划</button>
+            </div>
+            <div id="routeResult" style="background:rgba(255,255,255,0.6); border-radius:24px; padding:18px;">
+                <div class="result-row">
+                    <div class="result-stat"><div class="value" id="totalTime">—</div><div>分钟</div></div>
+                    <div class="result-stat"><div class="value" id="transferCount">0</div><div>换乘</div></div>
+                    <div class="result-stat"><div class="value" id="stationCount">0</div><div>站点</div></div>
+                    <div class="result-stat"><div class="value" id="ticketPrice">¥0</div><div>票价</div></div>
+                </div>
+                <div style="font-size:13px; margin-top:12px; display:flex; justify-content:space-between;">
+                    <span id="routeDesc">选择起终点</span>
+                    <span id="discountTag" style="background:#eef2ff; padding:2px 14px; border-radius:40px;">成人票</span>
+                </div>
+                <div id="segmentsList" style="margin-top: 14px; font-size:12px; color:#334155;"></div>
+                <div id="cacheHint" style="margin-top: 8px; font-size: 11px; color: #64748b; text-align: center;"></div>
+            </div>
+        </div>
+
+        <div id="panel-notice" class="panel">
+            <div class="card">
+                <h4 style="margin-bottom: 12px;">📢 运营公告</h4>
+                <div id="noticeList">
+                    <div class="notice-item"><strong>环线</strong> 平日22:30结束，节假日延至23:00</div>
+                    <div class="notice-item"><strong>国博线</strong> 末班22:30 · 江跳线21:30</div>
+                    <div class="notice-item"><strong>高峰提醒</strong> 早高峰 7:30-9:00，晚高峰 17:30-19:30</div>
+                </div>
+                <div id="liveClock" style="margin-top:12px; font-weight:500;">⏱️ 当前时间: --:--</div>
+            </div>
+        </div>
+
+        <div id="panel-lineinfo" class="panel">
+            <div class="card">
+                <h4 style="margin-bottom: 10px;">📌 线路走向 & 运营时间</h4>
+                <table class="line-info-table" id="lineTableBody"></table>
+                <h4 style="margin: 24px 0 12px;">💰 阶梯票价表</h4>
+                <table class="fare-table">
+                    <tr><td>0-4km</td><td>2元</td><td>4-8km</td><td>3元</td><td>8-12km</td><td>4元</td></tr>
+                    <tr><td>12-17km</td><td>5元</td><td>17-23km</td><td>6元</td><td>23-30km</td><td>7元</td></tr>
+                    <tr><td>30-40km</td><td>8元</td><td>40-55km</td><td>9元</td><td>55km+</td><td>每20km+1元</td></tr>
+                </table>
+                <div style="margin-top:16px; background:#eef2ff; padding:14px; border-radius:18px;">
+                    <strong>🎟️ 优惠政策</strong><br>
+                    <small>· 畅通卡/扫码9折 · 学生卡5折 · 老年/残疾卡免费 · 月消费满100元7折，200元5折 · 1小时内公交换乘免费</small>
+                </div>
+            </div>
+        </div>
+
+        <div id="panel-spot" class="panel">
+            <div class="card">
+                <h4 style="margin-bottom: 12px;">📍 附近网红打卡地</h4>
+                <div id="nearSpotsContainer">点击地图站点，解锁周边景点</div>
+            </div>
+        </div>
+
+        <div id="panel-share" class="panel">
+            <div class="card" style="text-align:center;">
+                <h4>📍 共享实时位置</h4>
+                <p style="margin: 12px 0; font-size:13px;">与好友同步行程，安全出行</p>
+                <div onclick="shareLocation()" style="background:#2d4059; color:white; padding:14px; border-radius:40px; cursor:pointer;">开始共享行程</div>
+                <div id="shareStatus" style="margin-top: 12px; font-size: 12px; color: #64748b;"></div>
+            </div>
+        </div>
+    </aside>
+</div>
+
+<script>
+    // ======================= API 配置 =======================
+    // 后端API地址（根据实际部署修改）
+    const API_BASE_URL = 'http://localhost:8080/api';
+    
+    // 全局状态
+    let selectedStationName = null;
+    let animationFrameId = null;
+    let currentTicket = 'normal';
+    let currentStrategy = 'time';
+    let routeCache = new Map(); // 前端缓存
+    
+    // ======================= 完整轨道交通数据 =======================
+    const rawData = [
+        ["1号线","朝天门",29.5651,106.5823],["1号线","小什字",29.5598,106.5765],["1号线","较场口",29.5537,106.5745],["1号线","七星岗",29.5502,106.5651],["1号线","两路口",29.5536,106.5389],["1号线","鹅岭",29.5461,106.5219],["1号线","大坪",29.5379,106.5067],["1号线","石油路",29.5351,106.4943],["1号线","歇台子",29.5381,106.4937],["1号线","石桥铺",29.5336,106.4889],["1号线","高庙村",29.5389,106.4764],["1号线","马家岩",29.5433,106.4681],["1号线","小龙坎",29.5486,106.4633],["1号线","沙坪坝",29.5551,106.4947],["1号线","烈士墓",29.5678,106.4669],["1号线","磁器口",29.5775,106.4544],["1号线","石井坡",29.5875,106.4381],["1号线","双碑",29.5972,106.4258],["1号线","赖家桥",29.6156,106.3906],["1号线","微电园",29.6258,106.3594],["1号线","陈家桥",29.6336,106.3317],["1号线","大学城",29.5937,106.3072],["1号线","尖顶坡",29.6061,106.2944],["1号线","璧山",29.6361,106.2844],
+        ["2号线","较场口",29.5537,106.5745],["2号线","临江门",29.5636,106.5681],["2号线","黄花园",29.5619,106.5519],["2号线","大溪沟",29.5603,106.5436],["2号线","曾家岩",29.56,106.5339],["2号线","牛角沱",29.5567,106.5203],["2号线","李子坝",29.5529,106.5377],["2号线","佛图关",29.5478,106.5317],["2号线","大坪",29.5379,106.5067],["2号线","袁家岗",29.5286,106.4961],["2号线","谢家湾",29.5183,106.5167],["2号线","杨家坪",29.5075,106.5103],["2号线","动物园",29.4989,106.5017],["2号线","大堰村",29.4897,106.4969],["2号线","马王场",29.4797,106.4936],["2号线","平安",29.47,106.4911],["2号线","大渡口",29.4572,106.4947],["2号线","新山村",29.4461,106.4933],["2号线","天堂堡",29.4378,106.4925],["2号线","建桥",29.4208,106.49],["2号线","金家湾",29.4075,106.4878],["2号线","刘家坝",29.3961,106.4861],["2号线","白居寺",29.3819,106.4844],["2号线","大江",29.3617,106.4897],["2号线","鱼洞",29.3328,106.4989],
+        ["3号线","鱼洞",29.3328,106.4989],["3号线","金竹",29.3517,106.5083],["3号线","鱼胡路",29.3675,106.5178],["3号线","学堂湾",29.3889,106.5283],["3号线","大山村",29.4075,106.5383],["3号线","花溪",29.425,106.5467],["3号线","岔路口",29.4425,106.5533],["3号线","九公里",29.4617,106.5589],["3号线","麒龙",29.4767,106.5633],["3号线","八公里",29.4889,106.5678],["3号线","二塘",29.4989,106.5717],["3号线","六公里",29.5089,106.5744],["3号线","五公里",29.5167,106.5767],["3号线","四公里",29.5042,106.5753],["3号线","南坪",29.5278,106.5639],["3号线","工贸",29.5375,106.5583],["3号线","铜元局",29.545,106.5433],["3号线","两路口",29.5536,106.5389],["3号线","牛角沱",29.5567,106.5203],["3号线","华新街",29.5628,106.5283],["3号线","观音桥",29.5717,106.5378],["3号线","红旗河沟",29.5733,106.5333],["3号线","嘉州路",29.5875,106.5383],["3号线","郑家院子",29.5975,106.5467],["3号线","唐家院子",29.6033,106.5553],["3号线","狮子坪",29.6075,106.5633],["3号线","重庆北站",29.6053,106.5683],["3号线","龙头寺",29.6125,106.5767],["3号线","童家院子",29.6225,106.5867],["3号线","金渝",29.635,106.595],["3号线","金童路",29.6467,106.5983],["3号线","鸳鸯",29.6613,106.5601],["3号线","园博园",29.6767,106.5683],["3号线","翠云",29.6875,106.5733],["3号线","长福路",29.6967,106.5783],["3号线","回兴",29.7033,106.5883],["3号线","双龙",29.7067,106.6],["3号线","碧津",29.7078,106.6133],["3号线","江北机场",29.7083,106.6331],
+        ["6号线","茶园",29.4876,106.6429],["6号线","长生桥",29.4967,106.6267],["6号线","刘家坪",29.5083,106.6133],["6号线","上新街",29.54,106.5867],["6号线","小什字",29.5598,106.5765],["6号线","大剧院",29.5683,106.5867],["6号线","江北城",29.5767,106.5817],["6号线","五里店",29.5733,106.5667],["6号线","红土地",29.5733,106.5533],["6号线","黄泥塝",29.5717,106.5467],["6号线","红旗河沟",29.5733,106.5333],["6号线","花卉园",29.5767,106.5183],["6号线","大龙山",29.5833,106.5083],["6号线","冉家坝",29.5917,106.5033],["6号线","光电园",29.6083,106.4933],["6号线","大竹林",29.682,106.482],["6号线","康庄",29.6933,106.4733],["6号线","九曲河",29.7067,106.4633],["6号线","礼嘉",29.6317,106.5083],["6号线","金山寺",29.6517,106.4933],["6号线","曹家湾",29.6633,106.4783],["6号线","蔡家",29.6767,106.4633],["6号线","向家岗",29.6883,106.4483],["6号线","龙凤溪",29.7867,106.3883],["6号线","状元碑",29.8033,106.3783],["6号线","北碚",29.8183,106.3717],
+        ["国博线","礼嘉",29.6317,106.5083],["国博线","黄茅坪",29.6467,106.5283],["国博线","高义口",29.6583,106.5483],["国博线","国博中心",29.6683,106.5683],["国博线","悦来",29.6783,106.5883],
+        ["环线","重庆图书馆",29.5717,106.4533],["环线","沙坪坝",29.5551,106.4947],["环线","重庆大学",29.5667,106.4817],["环线","玉带山",29.5832,106.4721],["环线","南桥寺",29.5883,106.4867],["环线","体育公园",29.5933,106.5017],["环线","冉家坝",29.5917,106.5033],["环线","动步公园",29.5983,106.5183],["环线","洪湖东路",29.6033,106.5333],["环线","民安大道",29.5917,106.5431],["环线","重庆北站北广场",29.6089,106.5694],["环线","渝鲁",29.5783,106.5867],["环线","五里店",29.5733,106.5667],["环线","弹子石",29.5617,106.6033],["环线","涂山",29.5367,106.6067],["环线","上新街",29.54,106.5867],["环线","上浩",29.53,106.5833],["环线","四公里",29.5042,106.5753],["环线","南湖",29.5167,106.5533],["环线","海峡路",29.515,106.5333],["环线","谢家湾",29.5183,106.5167],["环线","奥体中心",29.5283,106.4983],["环线","陈家坪",29.5367,106.4783],["环线","彩云湖",29.5467,106.4633],["环线","二郎",29.5567,106.4567],["环线","华龙",29.5633,106.4517],["环线","重庆西站",29.5053,106.4467],["环线","上桥",29.5567,106.4467],["环线","凤鸣山",29.5667,106.4483]
+    ];
+
+    const lineColors = {'1号线':'#E4002B','2号线':'#007A3D','3号线':'#009EE0','6号线':'#E6007E','国博线':'#E6007E','环线':'#F68B1F'};
+    const stationMap = new Map();
+    let stations = [];
+    
+    rawData.forEach(([line, name, lat, lon]) => {
+        if (!stationMap.has(name)) {
+            stationMap.set(name, { name, lat, lon, lines: [line] });
+            stations.push(stationMap.get(name));
+        } else {
+            let s = stationMap.get(name);
+            if (!s.lines.includes(line)) s.lines.push(line);
+        }
+    });
+
+    // 站点信息增强
+    const scenicMap = {
+        "朝天门": { scenery: "两江交汇、来福士广场", culture: "重庆零公里地标", food: "火锅、小面", crowdLevel: "拥挤" },
+        "小什字": { scenery: "洪崖洞、长江索道", culture: "罗汉寺", food: "酸辣粉", crowdLevel: "非常拥挤" },
+        "李子坝": { scenery: "轻轨穿楼奇观", culture: "网红打卡地", food: "李子坝梁山鸡", crowdLevel: "拥挤" },
+        "磁器口": { scenery: "千年古镇江景", culture: "巴渝民俗", food: "陈麻花、毛血旺", crowdLevel: "非常拥挤" },
+        "观音桥": { scenery: "商圈夜景", culture: "潮流街区", food: "火锅、烧烤", crowdLevel: "拥挤" },
+        "较场口": { scenery: "十八梯", culture: "老重庆风貌", food: "小面", crowdLevel: "中等" },
+        "两路口": { scenery: "皇冠大扶梯", culture: "交通枢纽", food: "凉面", crowdLevel: "中等" },
+        "沙坪坝": { scenery: "三峡广场", culture: "学府文化", food: "烤鱼", crowdLevel: "拥挤" }
+    };
+
+    // 拼音首字母分组
+    const firstLetterMap = { '朝':'C','小':'X','较':'J','七':'Q','两':'L','鹅':'E','大':'D','石':'S','高':'G','马':'M','沙':'S','烈':'L','磁':'C','双':'S','赖':'L','微':'W','陈':'C','尖':'J','璧':'B','临':'L','黄':'H','曾':'Z','牛':'N','李':'L','佛':'F','袁':'Y','谢':'X','杨':'Y','动':'D','观':'G','红':'H','嘉':'J','郑':'Z','唐':'T','狮':'S','重':'C','龙':'L','童':'T','金':'J','鸳':'Y','园':'Y','翠':'C','长':'C','回':'H','碧':'B','江':'J','茶':'C','刘':'L','上':'S','五':'W','四':'S','南':'N','工':'G','铜':'T','华':'H','六':'L','麒':'Q','八':'B','二':'E','花':'H','岔':'C','九':'J','鱼':'Y','冉':'R','光':'G','康':'K','礼':'L','曹':'C','蔡':'C','向':'X','状':'Z','北':'B','国':'G','悦':'Y','图':'T','玉':'D','体':'T','民':'M','洪':'H','渝':'Y','弹':'D','涂':'T','奥':'A','彩':'C','西':'X','凤':'F' };
+    const groups = {};
+    stations.forEach(s => { let l = firstLetterMap[s.name[0]] || 'Z'; if (!groups[l]) groups[l] = []; groups[l].push(s.name); });
+    const sortedLetters = Object.keys(groups).sort();
+    
+    function fillSelects() {
+        let html = '';
+        sortedLetters.forEach(letter => {
+            html += `<optgroup label="${letter}">${groups[letter].sort().map(n => `<option value="${n}">${n}</option>`).join('')}</optgroup>`;
+        });
+        document.getElementById('startStation').innerHTML = html;
+        document.getElementById('endStation').innerHTML = html;
+        document.getElementById('startStation').value = '朝天门';
+        document.getElementById('endStation').value = '观音桥';
+    }
+    fillSelects();
+
+    // ======================= 后端API调用 =======================
+    async function callBackendAPI(endpoint, data) {
+        try {
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (!response.ok) throw new Error(`API error: ${response.status}`);
+            return await response.json();
+        } catch (error) {
+            console.warn('后端API调用失败，使用模拟数据:', error);
+            return null;
+        }
+    }
+
+    // 票价计算（前端模拟，也可从后端获取）
+    function calcFare(dist) {
+        let price = 2;
+        if (dist > 4) price = 3; if (dist > 8) price = 4; if (dist > 12) price = 5;
+        if (dist > 17) price = 6; if (dist > 23) price = 7; if (dist > 30) price = 8;
+        if (dist > 40) price = 9; if (dist > 55) price = 11;
+        if (currentTicket === 'student') price = Math.round(price * 0.5);
+        if (currentTicket === 'elder' || currentTicket === 'disabled') price = 0;
+        return price;
+    }
+
+    // 路径规划（优先使用后端API）
+    async function planRoute() {
+        const startName = document.getElementById('startStation').value;
+        const endName = document.getElementById('endStation').value;
+        const start = stations.find(s => s.name === startName);
+        const end = stations.find(s => s.name === endName);
+        
+        if (!start || !end) {
+            alert('请选择有效的站点');
+            return;
+        }
+        
+        // 高亮起点
+        selectedStationName = start.name;
+        drawMap();
+        showPopup(start);
+        
+        // 显示加载状态
+        const btn = document.querySelector('.btn-primary');
+        const originalText = btn.innerText;
+        btn.innerHTML = '<span class="loading"></span>规划中...';
+        btn.disabled = true;
+        
+        try {
+            // 尝试调用后端API
+            const result = await callBackendAPI('/route/plan', {
+                start: startName,
+                end: endName,
+                strategy: currentStrategy,
+                ticketType: currentTicket
+            });
+            
+            if (result && result.success) {
+                // 使用后端返回的数据
+                updateRouteResult(result.data, start, end);
+                document.getElementById('cacheHint').innerHTML = '⚡ 已缓存';
+            } else {
+                // 降级到前端模拟
+                const dist = Math.hypot(end.lat - start.lat, end.lon - start.lon) * 100;
+                let time, transfers, stationsCount;
+                
+                if (currentStrategy === 'time') {
+                    time = Math.max(12, Math.round(dist * 1.3 + 5));
+                    transfers = 1;
+                    stationsCount = Math.max(5, Math.round(dist / 1.2));
+                } else if (currentStrategy === 'transfer') {
+                    time = Math.max(15, Math.round(dist * 1.5 + 8));
+                    transfers = 0;
+                    stationsCount = Math.max(6, Math.round(dist / 1.4));
+                } else {
+                    time = Math.max(13, Math.round(dist * 1.4 + 6));
+                    transfers = 1;
+                    stationsCount = Math.max(5, Math.round(dist / 1.3));
+                }
+                
+                const price = calcFare(dist);
+                document.getElementById('totalTime').innerText = time;
+                document.getElementById('transferCount').innerText = transfers;
+                document.getElementById('stationCount').innerText = stationsCount;
+                document.getElementById('ticketPrice').innerText = '¥' + price;
+                document.getElementById('routeDesc').innerHTML = `${start.name} → ${end.name}`;
+                document.getElementById('segmentsList').innerHTML = `<div style="padding:8px 0;">🚇 推荐方案: 乘坐 ${start.lines[0]} 方向，预计 ${time} 分钟到达 (${transfers}次换乘)</div>`;
+                document.getElementById('cacheHint').innerHTML = '📡 使用本地计算模式';
+            }
+        } catch (error) {
+            console.error('规划失败:', error);
+            // 错误处理...
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+        
+        const discountMap = { normal: '成人票', student: '学生5折', elder: '老人免费', disabled: '残疾人免费' };
+        document.getElementById('discountTag').innerText = discountMap[currentTicket];
+    }
+    
+    function updateRouteResult(data, start, end) {
+        document.getElementById('totalTime').innerText = data.totalTime || data.time || '—';
+        document.getElementById('transferCount').innerText = data.transferCount || data.transfers || 0;
+        document.getElementById('stationCount').innerText = data.stationCount || data.stations || 0;
+        document.getElementById('ticketPrice').innerText = '¥' + (data.price || calcFare(10));
+        document.getElementById('routeDesc').innerHTML = `${start.name} → ${end.name}`;
+        
+        if (data.segments && data.segments.length > 0) {
+            let segmentsHtml = '<div style="margin-top: 8px;">';
+            data.segments.forEach((seg, idx) => {
+                segmentsHtml += `<div style="padding: 8px 0; border-bottom: 1px solid #eef2ff;">
+                    ${idx + 1}. ${seg.type === 'train' ? '🚇' : '🚶'} ${seg.startStation} → ${seg.endStation}
+                    <span style="float: right;">${seg.time}分钟</span>
+                </div>`;
+            });
+            segmentsHtml += '</div>';
+            document.getElementById('segmentsList').innerHTML = segmentsHtml;
+        } else {
+            document.getElementById('segmentsList').innerHTML = `<div style="padding:8px 0;">🚇 ${data.description || '路径规划完成'}</div>`;
+        }
+    }
+
+    // ======================= 获取站点拥挤度 =======================
+    async function getStationCrowdLevel(stationName) {
+        try {
+            const result = await callBackendAPI('/station/crowd', { station: stationName });
+            if (result && result.success) {
+                return result.data.level;
+            }
+        } catch (error) {}
+        
+        // 返回本地数据
+        const info = scenicMap[stationName];
+        return info ? info.crowdLevel : '中等';
+    }
+
+    // ======================= 分享位置 =======================
+    async function shareLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(async (position) => {
+                const { latitude, longitude } = position.coords;
+                try {
+                    await callBackendAPI('/location/share', {
+                        userId: 'user_' + Date.now(),
+                        lat: latitude,
+                        lon: longitude,
+                        speed: 0
+                    });
+                    document.getElementById('shareStatus').innerHTML = '✅ 位置已共享，好友可见';
+                    setTimeout(() => {
+                        document.getElementById('shareStatus').innerHTML = '';
+                    }, 3000);
+                } catch (error) {
+                    document.getElementById('shareStatus').innerHTML = '📍 位置共享已开启（模拟模式）';
+                }
+            }, () => {
+                document.getElementById('shareStatus').innerHTML = '📍 位置共享已开启（模拟模式）';
+            });
+        } else {
+            document.getElementById('shareStatus').innerHTML = '⚠️ 浏览器不支持定位';
+        }
+    }
+
+    // ======================= 地图渲染引擎 =======================
+    const canvas = document.getElementById('mapCanvas');
+    const ctx = canvas.getContext('2d');
+    let canvasWidth, canvasHeight;
+    let scale = 2.4;
+    let offsetX = 0, offsetY = 0;
+    let isDragging = false, lastMouseX = 0, lastMouseY = 0;
+
+    const allLats = stations.map(s => s.lat);
+    const allLons = stations.map(s => s.lon);
+    const minLat = Math.min(...allLats) - 0.04;
+    const maxLat = Math.max(...allLats) + 0.04;
+    const minLon = Math.min(...allLons) - 0.04;
+    const maxLon = Math.max(...allLons) + 0.04;
+
+    function project(lon, lat) {
+        const x = (lon - minLon) / (maxLon - minLon) * canvasWidth;
+        const y = (1 - (lat - minLat) / (maxLat - minLat)) * canvasHeight;
+        return { x, y };
+    }
+
+    function drawMap() {
+        if (!ctx) return;
+        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+        ctx.save();
+        ctx.translate(offsetX, offsetY);
+        ctx.scale(scale, scale);
+
+        // 绘制线路
+        const lineGroups = new Map();
+        rawData.forEach(item => {
+            if (!lineGroups.has(item[0])) lineGroups.set(item[0], []);
+            lineGroups.get(item[0]).push(item);
+        });
+        for (let [lineName, pts] of lineGroups.entries()) {
+            if (pts.length < 2) continue;
+            ctx.beginPath();
+            ctx.lineWidth = 2.6 / scale;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = lineColors[lineName] || '#aaa';
+            pts.forEach((pt, idx) => {
+                const p = project(pt[3], pt[2]);
+                if (idx === 0) ctx.moveTo(p.x, p.y);
+                else ctx.lineTo(p.x, p.y);
+            });
+            ctx.stroke();
+        }
+
+        // 绘制站点
+        stations.forEach(s => {
+            const p = project(s.lon, s.lat);
+            const isTrans = s.lines.length > 1;
+            const isSelected = (selectedStationName === s.name);
+
+            if (isSelected) {
+                const pulse = (Math.sin(Date.now() / 180) + 1) / 2;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, (12 + pulse * 6) / scale, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(30, 41, 59, ${0.25 + pulse * 0.15})`;
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 7 / scale, 0, Math.PI * 2);
+                ctx.fillStyle = "#1e293b";
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 4.5 / scale, 0, Math.PI * 2);
+                ctx.fillStyle = "#facc15";
+                ctx.fill();
+            } else {
+                const radius = isTrans ? 5 : 3.5;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, radius / scale, 0, Math.PI * 2);
+                ctx.fillStyle = "#ffffff";
+                ctx.fill();
+                ctx.lineWidth = 1.6 / scale;
+                ctx.strokeStyle = isTrans ? '#334155' : (lineColors[s.lines[0]] || '#666');
+                ctx.stroke();
+            }
+
+            if (scale > 2.2 || isTrans || isSelected) {
+                ctx.fillStyle = isSelected ? "#0f172a" : "#1e293b";
+                ctx.font = `500 ${12 / scale}px Inter`;
+                ctx.textAlign = 'center';
+                ctx.fillText(s.name, p.x, p.y + 16 / scale);
+            }
+        });
+
+        ctx.restore();
+
+        if (selectedStationName) {
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            animationFrameId = requestAnimationFrame(() => drawMap());
+        } else {
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+        }
+    }
+
+    function resizeAndDraw() {
+        const container = document.getElementById('mapContainer');
+        const rect = container.getBoundingClientRect();
+        canvasWidth = rect.width;
+        canvasHeight = rect.height;
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+        const centerLon = (minLon + maxLon) / 2;
+        const centerLat = (minLat + maxLat) / 2;
+        const centerProj = project(centerLon, centerLat);
+        offsetX = canvasWidth / 2 - centerProj.x * scale;
+        offsetY = canvasHeight / 2 - centerProj.y * scale;
+        drawMap();
+    }
+
+    // 事件绑定
+    function handleMouseDown(e) { isDragging = true; lastMouseX = e.clientX; lastMouseY = e.clientY; canvas.style.cursor = 'grabbing'; }
+    function handleMouseMove(e) { if (!isDragging) return; offsetX += e.clientX - lastMouseX; offsetY += e.clientY - lastMouseY; lastMouseX = e.clientX; lastMouseY = e.clientY; drawMap(); }
+    function handleMouseUp() { isDragging = false; canvas.style.cursor = 'grab'; }
+    function handleWheel(e) { e.preventDefault(); scale = Math.min(Math.max(scale * (e.deltaY > 0 ? 0.92 : 1.08), 1.4), 7.5); drawMap(); }
+    function handleCanvasClick(e) {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = (e.clientX - rect.left - offsetX) / scale;
+        const mouseY = (e.clientY - rect.top - offsetY) / scale;
+        let closest = null;
+        let minDist = 20;
+        stations.forEach(s => {
+            const p = project(s.lon, s.lat);
+            const d = Math.hypot(p.x - mouseX, p.y - mouseY);
+            if (d < minDist) { minDist = d; closest = s; }
+        });
+        if (closest) {
+            selectedStationName = closest.name;
+            showPopup(closest);
+            drawMap();
+        }
+    }
+
+    canvas.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    canvas.addEventListener('wheel', handleWheel, { passive: false });
+    canvas.addEventListener('click', handleCanvasClick);
+    window.addEventListener('resize', () => resizeAndDraw());
+
+    async function showPopup(s) {
+        const info = scenicMap[s.name] || { scenery: "山城风光", culture: "巴渝底蕴", food: "重庆美食", crowdLevel: "中等" };
+        const crowdLevel = await getStationCrowdLevel(s.name);
+        
+        document.getElementById('popupName').innerText = s.name;
+        document.getElementById('popupLines').innerText = s.lines.join(' · ');
+        document.getElementById('popupScenery').innerText = info.scenery;
+        document.getElementById('popupCulture').innerText = info.culture;
+        document.getElementById('popupFood').innerText = info.food;
+        document.getElementById('popupRoute').innerText = `${s.name}站 按指引出站`;
+        document.getElementById('popupCrowdLevel').innerHTML = `<span style="font-weight:500;">👥 拥挤度:</span> ${crowdLevel}`;
+        document.getElementById('stationPopup').classList.add('show');
+        document.getElementById('selectedInfo').innerHTML = `📍 ${s.name} (${s.lines.join('/')}) ✨ 已高亮 `;
+        updateNearSpots(s.name);
+    }
+    
+    window.hidePopup = () => {
+        document.getElementById('stationPopup').classList.remove('show');
+    };
+
+    function updateNearSpots(stationName) {
+        const spotMap = {
+            "小什字": ["洪崖洞", "长江索道"], "朝天门": ["来福士广场", "两江游"], 
+            "较场口": ["十八梯"], "李子坝": ["李子坝轻轨穿楼"], 
+            "磁器口": ["磁器口古镇"], "弹子石": ["弹子石老街"]
+        };
+        const spots = spotMap[stationName] || [];
+        const container = document.getElementById('nearSpotsContainer');
+        if (!spots.length) {
+            container.innerHTML = '<div style="padding:12px;">✨ 点击站点，发现周边网红打卡地</div>';
+            return;
+        }
+        container.innerHTML = spots.map(spot => `
+            <div class="spot-card" onclick="alert('🎯 ${spot} - 重庆必打卡景点')">
+                <div class="spot-icon" style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
+                <div><strong>${spot}</strong><div style="font-size:12px;">重庆必打卡 · 出片圣地</div></div>
+            </div>
+        `).join('');
+    }
+
+    // 选项卡切换
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            document.getElementById(`panel-${this.dataset.tab}`).classList.add('active');
+        });
+    });
+
+    // 票种选择
+    document.querySelectorAll('.ticket-type').forEach(el => el.addEventListener('click', function() {
+        document.querySelectorAll('.ticket-type').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        currentTicket = this.dataset.type;
+    }));
+    
+    // 策略选择
+    document.querySelectorAll('.strategy-btn').forEach(btn => btn.addEventListener('click', function() {
+        document.querySelectorAll('.strategy-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        currentStrategy = this.dataset.strategy;
+    }));
+
+    // 线路详情表
+    const lineRoutes = { '1号线':'朝天门→璧山','2号线':'较场口→鱼洞','3号线':'鱼洞→江北机场','6号线':'茶园→北碚','国博线':'礼嘉→悦来','环线':'重庆西站环线' };
+    let lineHtml = '';
+    ['1号线','2号线','3号线','6号线','国博线','环线'].forEach(l => {
+        lineHtml += `<tr><td>${l}</td><td>${lineRoutes[l]}</td><td>06:30-23:00</td></tr>`;
+    });
+    document.getElementById('lineTableBody').innerHTML = lineHtml;
+
+    function updateClock() {
+        const d = new Date();
+        document.getElementById('liveClock').innerHTML = `⏱️ 当前时间: ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // 启动地图
+    resizeAndDraw();
+    setTimeout(() => {
+        const initStation = stations.find(s => s.name === '朝天门');
+        if (initStation) {
+            selectedStationName = initStation.name;
+            showPopup(initStation);
+            drawMap();
+        }
+    }, 500);
+    
+    // 导出全局函数
+    window.planRoute = planRoute;
+    window.shareLocation = shareLocation;
+</script>
+</body>
+</html>
